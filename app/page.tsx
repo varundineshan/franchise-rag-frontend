@@ -14,7 +14,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
 
   const ask = async () => {
-    if (!q.trim()) return;
+    if (!q.trim() || isLoading) return;
     
     const userMessage: Message = { role: "user", content: q };
     setMessages(prev => [...prev, userMessage]);
@@ -25,23 +25,29 @@ export default function Home() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ org_id: orgId, question: q }),
+        body: JSON.stringify({
+          question: q,
+          org_id: orgId,
+          manual_name: "OpsManual"
+        })
       });
+
       const data = await res.json();
       
       const aiMessage: Message = {
         role: "ai",
-        content: data.answer,
-        citations: data.citations ?? [],
-        refused: !!data.refused
+        content: data.answer || "I encountered an error.",
+        citations: data.citations || [],
+        refused: data.refused || false
       };
+      
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      const errorMessage: Message = {
+      setMessages(prev => [...prev, {
         role: "ai",
-        content: "Sorry, I encountered an error. Please try again."
-      };
-      setMessages(prev => [...prev, errorMessage]);
+        content: "Sorry, I encountered an error. Please try again.",
+        refused: false
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -55,109 +61,108 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--bg-main)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#f4f6f9", color: "#1a1f36", fontFamily: "Inter, sans-serif" }}>
       {/* Header */}
-      <header className="flex justify-between items-center px-8 py-4" style={{ backgroundColor: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-        <div className="flex items-center gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
-            <path d="M12 12L2.1 12.1"/>
-            <path d="M12 12l8.8-8.8"/>
-          </svg>
-          <span className="text-xl font-bold">FranchiseOps AI</span>
+      <header style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e2e8f0", padding: "1rem 2rem", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)", zIndex: 10 }}>
+        <div style={{ fontWeight: 600, fontSize: "1.25rem", color: "#0056b3", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ width: "32px", height: "32px", background: "#0056b3", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+              <path d="M12 12L2.1 12.1"/>
+              <path d="M12 12l8.8-8.8"/>
+            </svg>
+          </div>
+          FranchiseOps AI
         </div>
-        <nav>
-          <Link href="/admin" className="text-sm font-medium transition-colors" style={{ color: "var(--text-secondary)" }} onMouseOver={(e) => e.currentTarget.style.color = "var(--accent-color)"} onMouseOut={(e) => e.currentTarget.style.color = "var(--text-secondary)"}>Admin Portal →</Link>
-        </nav>
+        <Link href="/admin" style={{ color: "#4a5568", textDecoration: "none", fontWeight: 500, fontSize: "0.95rem", padding: "0.5rem 1rem", borderRadius: "12px", transition: "all 0.2s" }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#e9ecef"; e.currentTarget.style.color = "#0056b3"; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#4a5568"; }}>
+          Admin Portal →
+        </Link>
       </header>
 
       {/* Context Bar */}
-      <div className="flex items-center gap-4 px-8 py-3" style={{ backgroundColor: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-        <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Active Context:</span>
-        <input
-          type="text"
-          value={orgId}
-          onChange={e => setOrgId(e.target.value)}
-          placeholder="Enter Franchise ID..."
-          className="px-4 py-2 rounded-lg font-mono text-sm outline-none transition-all"
-          style={{ backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
-          onFocus={(e) => { e.target.style.borderColor = "var(--accent-color)"; e.target.style.boxShadow = "0 0 0 2px rgba(59, 130, 246, 0.2)"; }}
-          onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
-        />
+      <div style={{ backgroundColor: "#ffffff", padding: "0.75rem 2rem", borderBottom: "1px solid #e2e8f0" }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", alignItems: "center", gap: "1rem" }}>
+          <span style={{ fontWeight: 500, color: "#4a5568", fontSize: "0.9rem" }}>Active Context:</span>
+          <input
+            type="text"
+            value={orgId}
+            onChange={e => setOrgId(e.target.value)}
+            style={{ padding: "0.4rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: "6px", fontFamily: "monospace", color: "#1a1f36", background: "#e9ecef", fontSize: "0.9rem", outline: "none" }}
+          />
+        </div>
       </div>
 
-      {/* Chat History */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse ml-auto" : ""} max-w-4xl ${msg.role === "user" ? "ml-auto" : "mr-auto"}`}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold" style={{ backgroundColor: msg.role === "ai" ? "var(--accent-color)" : "var(--bg-tertiary)", color: msg.role === "ai" ? "white" : "var(--text-secondary)" }}>
+      {/* Chat Container */}
+      <main style={{ flex: 1, overflowY: "auto", padding: "2rem", backgroundColor: "#f4f6f9" }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2rem" }}>
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "1rem", maxWidth: "85%", marginLeft: msg.role === "user" ? "auto" : "0", flexDirection: msg.role === "user" ? "row-reverse" : "row" }}>
+            {/* Avatar */}
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.9rem", flexShrink: 0, backgroundColor: msg.role === "ai" ? "#ffffff" : "#006add", border: msg.role === "ai" ? "2px solid #0056b3" : "none", color: msg.role === "ai" ? "#0056b3" : "white" }}>
               {msg.role === "ai" ? "AI" : "U"}
             </div>
-            <div className="flex-1">
-              <div className="px-5 py-4 rounded-xl" style={{ backgroundColor: msg.role === "user" ? "var(--accent-color)" : "var(--bg-secondary)", border: msg.role === "user" ? "none" : "1px solid var(--border-color)", color: msg.role === "user" ? "white" : "var(--text-primary)", borderBottomRightRadius: msg.role === "user" ? "4px" : "12px", borderBottomLeftRadius: msg.role === "ai" ? "4px" : "12px" }}>
-                {msg.refused && <span className="text-xs opacity-75 block mb-2">(refused)</span>}
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                {msg.citations && msg.citations.length > 0 && (
-                  <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--border-color)" }}>
-                    <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>CITATIONS</div>
-                    <div className="flex flex-wrap gap-2">
-                      {msg.citations.map((c, i) => (
-                        <span key={i} className="px-3 py-1 rounded-md text-xs font-medium" style={{ backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--border-color)" }}>
-                          {c.doc} p.{c.pages?.[0]}–{c.pages?.[1]}
-                        </span>
+
+            {/* Message Content */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div style={{ padding: "1rem 1.5rem", borderRadius: "12px", lineHeight: "1.6", fontSize: "1rem", boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)", position: "relative", backgroundColor: msg.role === "ai" ? "#ffffff" : "#006add", color: msg.role === "ai" ? "#1a1f36" : "#ffffff", border: msg.role === "ai" ? "1px solid #e2e8f0" : "none", borderTopLeftRadius: msg.role === "ai" ? "2px" : "12px", borderTopRightRadius: msg.role === "user" ? "2px" : "12px" }}>
+                {msg.refused && <span style={{ fontSize: "0.85rem", fontStyle: "italic", display: "block", marginBottom: "0.5rem", opacity: 0.7 }}>(Response refused)</span>}
+                <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{msg.content}</p>
+
+                {/* Citations */}
+                {msg.role === "ai" && msg.citations && msg.citations.length > 0 && (
+                  <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0", fontSize: "0.85rem" }}>
+                    <div style={{ fontWeight: 600, color: "#4a5568", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "0.75rem" }}>Sources detected</div>
+                    <ul style={{ listStyle: "none", display: "flex", flexWrap: "wrap", gap: "0.5rem", padding: 0, margin: 0 }}>
+                      {msg.citations.map((cite, idx) => (
+                        <li key={idx} style={{ backgroundColor: "#e9ecef", color: "#718096", padding: "0.25rem 0.5rem", borderRadius: "4px", fontFamily: "monospace", border: "1px solid #e2e8f0", cursor: "pointer", transition: "all 0.2s" }} onMouseOver={(e) => { e.currentTarget.style.borderColor = "#0056b3"; e.currentTarget.style.color = "#0056b3"; }} onMouseOut={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#718096"; }}>
+                          {cite.doc} p.{cite.pages.join(",")}
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>
             </div>
           </div>
         ))}
+
         {isLoading && (
-          <div className="flex gap-4 max-w-4xl">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold" style={{ backgroundColor: "var(--accent-color)", color: "white" }}>AI</div>
-            <div className="px-5 py-4 rounded-xl" style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "var(--text-secondary)", animationDelay: "0ms" }}></div>
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "var(--text-secondary)", animationDelay: "150ms" }}></div>
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "var(--text-secondary)", animationDelay: "300ms" }}></div>
-              </div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", maxWidth: "85%" }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.9rem", backgroundColor: "#ffffff", border: "2px solid #0056b3", color: "#0056b3" }}>AI</div>
+            <div style={{ padding: "1rem 1.5rem", borderRadius: "12px", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#4a5568", fontStyle: "italic" }}>
+              Thinking...
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </main>
 
       {/* Input Footer */}
-      <div className="px-8 py-6" style={{ backgroundColor: "var(--bg-secondary)", borderTop: "1px solid var(--border-color)" }}>
-        <div className="flex gap-4 max-w-4xl mx-auto">
+      <footer style={{ backgroundColor: "#f4f6f9", padding: "1.5rem 2rem 2rem 2rem", position: "sticky", bottom: 0 }}>
+        <div style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "30px", padding: "0.5rem 0.5rem 0.5rem 1.5rem", display: "flex", alignItems: "center", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)", maxWidth: "900px", margin: "0 auto" }}>
           <input
             type="text"
             value={q}
             onChange={e => setQ(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             placeholder="Ask a question about the manual..."
             disabled={isLoading}
-            className="flex-1 px-4 py-3 rounded-lg outline-none transition-all"
-            style={{ backgroundColor: "var(--bg-main)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
-            onFocus={(e) => { e.target.style.borderColor = "var(--accent-color)"; e.target.style.boxShadow = "0 0 0 2px rgba(59, 130, 246, 0.2)"; }}
-            onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
+            style={{ flex: 1, border: "none", outline: "none", fontSize: "1rem", color: "#1a1f36", background: "transparent", fontFamily: "Inter, sans-serif" }}
           />
           <button
             onClick={ask}
             disabled={isLoading || !q.trim()}
-            className="px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: "var(--accent-color)", color: "white" }}
-            onMouseOver={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = "var(--accent-hover)")}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "var(--accent-color)"}
+            style={{ backgroundColor: "#006add", color: "white", border: "none", width: "44px", height: "44px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: isLoading || !q.trim() ? "not-allowed" : "pointer", transition: "background-color 0.2s", marginLeft: "0.75rem", opacity: isLoading || !q.trim() ? 0.5 : 1 }}
+            onMouseOver={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = "#0056b3")}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#006add"}
           >
-            Ask
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
